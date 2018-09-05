@@ -9,10 +9,10 @@ Installation
 Prerequisites
 -----------------------
 * Python3
-* Discord.py
+* [Discord.py](https://github.com/Rapptz/discord.py)
 * ConfigParser
 * asyncio
-* BridgeAPI
+* [BridgeAPI](https://github.com/seanicus64/BridgeAPI)
 
 You must have created a Discord Bot to get a token.  There's are a million tutorials how to do that online, but you need a valid Discord account to do it.
 
