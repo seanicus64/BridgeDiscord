@@ -14,6 +14,7 @@ def wait_until_registered():
     print("registering users with IRC.")
     length = len(my_api._slots)
     while my_api._slots:
+        print("waiting...{}".format(len(my_api._slots)))
         my_api.update()
     print("done registering")
 
@@ -32,6 +33,32 @@ async def my_background_task():
                 await client.send_message(discord_channel, "**<{}>**: {}".format(m.user, m.message))
             ch.messages = []
         await asyncio.sleep(.01)
+
+@client.event
+async def on_member_join(member):
+    nick = member.nick if member.nick else member.display_name
+    my_api.register_user(nick, member.id, "discord", member.display_name, member.id, member)
+    wait_until_registered()
+    
+    print("-"*30)
+    print(nick, member)
+    print([(u.nick, u.alien) for u in my_api._users])
+    IRC_user = my_api.get_user(member)
+    print(IRC_user)
+
+    for ch in my_api._channels:
+        print("channel to join: {}".format(ch))
+        IRC_user.join(ch)
+        
+
+@client.event
+async def on_member_remove(member):
+    for u in my_api._users:
+        nick, user, host, real, link, alien = u.nick, u.user, u.host, u.real, u.link_id, u.alien
+        print("{}!{}@{}:{}<{}>  {}".format(nick, user, host, real, link, alien))
+        if alien == member:
+            my_api.quit(u, "Left discord")
+            break
 
 @client.event
 async def on_message(message):
@@ -67,7 +94,7 @@ async def on_ready():
     for m in members:
         # Not all discord users have a nick set.
         nick = m.nick if m.nick else m.display_name
-        my_api.register_user(nick, m.id, "discord", m.display_name, m.id, m)
+        my_api.register_user(nick, str(m).replace("#", "_"), "discord", m.display_name, m.id, m)
     wait_until_registered()
 
     for user in my_api._users:
@@ -75,6 +102,7 @@ async def on_ready():
             continue
         for ch in my_api._channels:
             user.join(ch)
+            print(ch)
     
 # Create a while loop that always checks for updates.
 client.loop.create_task(my_background_task())
