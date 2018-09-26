@@ -11,12 +11,9 @@ config.read("bot.conf")
 token = config["DEFAULT"]["discord_token"]
 
 def wait_until_registered():
-    print("registering users with IRC.")
     length = len(my_api._slots)
     while my_api._slots:
-        print("waiting...{}".format(len(my_api._slots)))
         my_api.update()
-    print("done registering")
 
 async def my_background_task():
     """Constantly checks for incoming information from IRC."""
@@ -28,34 +25,31 @@ async def my_background_task():
                 if d.name == ch.alien_name:
                     discord_channel = d
             for m in ch.messages:
-                print("Channel: {} Nick: {} Message: {} discord_chan: {}".format(ch, m.user, m.message, discord_channel))
+                to_be_sent = "**<{}>** : {}".format(m.user, m.message)
+                if m.message.startswith("\u0001"):
+                    _message = m.message.strip("\u0001")
+                    _message = _message.strip("ACTION")
+                    to_be_sent = "*{} {}*".format(m.user, _message)
 
-                await client.send_message(discord_channel, "**<{}>**: {}".format(m.user, m.message))
+                await client.send_message(discord_channel, to_be_sent)
             ch.messages = []
         await asyncio.sleep(.01)
 
 @client.event
 async def on_member_join(member):
     nick = member.nick if member.nick else member.display_name
-    my_api.register_user(nick, member.id, "discord", member.display_name, member.id, member)
+    my_api.register_user(nick, str(member).replace("#", "_"), "discord", member.display_name, "{}_{}".format(member.server.id, member.id), member)
     wait_until_registered()
-    
-    print("-"*30)
-    print(nick, member)
-    print([(u.nick, u.alien) for u in my_api._users])
-    IRC_user = my_api.get_user(member)
-    print(IRC_user)
-
-    for ch in my_api._channels:
-        print("channel to join: {}".format(ch))
-        IRC_user.join(ch)
+    IRC_users = my_api.get_user(member)
+    for u in IRC_users:
+        for ch in my_api._channels:
+            u.join(ch)
         
 
 @client.event
 async def on_member_remove(member):
     for u in my_api._users:
         nick, user, host, real, link, alien = u.nick, u.user, u.host, u.real, u.link_id, u.alien
-        print("{}!{}@{}:{}<{}>  {}".format(nick, user, host, real, link, alien))
         if alien == member:
             my_api.quit(u, "Left discord")
             break
@@ -94,7 +88,7 @@ async def on_ready():
     for m in members:
         # Not all discord users have a nick set.
         nick = m.nick if m.nick else m.display_name
-        my_api.register_user(nick, str(m).replace("#", "_"), "discord", m.display_name, m.id, m)
+        my_api.register_user(nick, str(m).replace("#", "_"), "discord", m.display_name, str(m.server.id) + "_" + str(m.id), m)
     wait_until_registered()
 
     for user in my_api._users:
@@ -102,7 +96,7 @@ async def on_ready():
             continue
         for ch in my_api._channels:
             user.join(ch)
-            print(ch)
+            #print(ch)
     
 # Create a while loop that always checks for updates.
 client.loop.create_task(my_background_task())
