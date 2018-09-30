@@ -31,8 +31,8 @@ class User:
     def quit(self, message=""):
         self.api.quit(self, message)
     def __repr__(self):
-        string = "({}{}!{}@{}:{})".format("<{}> ".format(self.link_id) \
-            if self.link_id else "", self.nick, self.user, self.host, self.real)
+        string = "({}!{}@{}:{}{}{})".format(self.nick, self.user, self.host, self.real, \
+            "||alien<{}>".format(self.alien) if self.alien else "", "||link_id<{}>".format(self.link_id) if self.link_id else "")
         return string
 class Message:
     def __init__(self, user, message):
@@ -67,6 +67,15 @@ class API:
         self._users = []
         self._channels = []
         self._slots = {}
+    def get_user(self, alien):
+        all_users = []
+        for user in self._users:
+            if user.alien == alien:
+                all_users.append(user)
+#                return user
+        if all_users:
+            return all_users
+        raise KeyError
     def connect(self, host, port):
         """Connects to BridgeServ and sends initial requests along."""
         self.s.connect((host, port))
@@ -105,6 +114,14 @@ class API:
         data["user_link_id"] =  user.link_id
         data["message"] = message
         self.send_command(data)
+        # if for whatever reason there is more than one of that user, delete all of them
+        if user in self._users:
+            while True:
+                try:
+                    self._users.remove(user)
+                except:
+                    break
+
     def privmsg_channel(self, user, channel, message):
         """Sends a message from a user to a channel."""
         data = {}
@@ -133,6 +150,7 @@ class API:
             
             data = self.s.recv(2048000)
             buff += data.decode("utf-8")
+            
             while buff.find("\n") != -1:
                 line, buff = buff.split("\n", 1)
                 self.parse_line(line)
@@ -166,7 +184,11 @@ class API:
             event = Event(data)
             if event.command == "register":
                 response_id = event.response_id
-                alien = self._slots[response_id]
+                try:
+                    alien = self._slots[response_id]
+                except:
+                    pass
+                    
                 del self._slots[response_id]
                 user = User(self, event.nick, event.username, event.hostname, event.realname, event.link_id, alien)
                 self._users.append(user)
@@ -175,7 +197,6 @@ class API:
                 self._users = []
                 for user in event.all_users:
                     user = User(self, user[0], user[1], user[2], user[3], user[4])
-                    print(user)
                     self._users.append(user)
             if event.command == "get_channels":
                 self._channels = []

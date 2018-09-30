@@ -4,11 +4,13 @@ import configparser
 import discord
 import api
 my_api = api.API()
-my_api.connect("127.0.0.1", 5959)
 client = discord.Client()
 config = configparser.ConfigParser()
 config.read("bot.conf")
+host = config["DEFAULT"]["host"]
+port = int(config["DEFAULT"]["port"])
 token = config["DEFAULT"]["discord_token"]
+my_api.connect(host, port)
 
 def wait_until_registered():
     length = len(my_api._slots)
@@ -56,7 +58,7 @@ async def on_member_remove(member):
 
 @client.event
 async def on_message(message):
-    """What happens when the bot sees a new message on IRC
+    """What happens when the bot sees a new message on Discord
     (Sends it to BridgeServ)"""
     content = message.clean_content
     nick = message.author.display_name
@@ -96,8 +98,6 @@ async def on_ready():
             continue
         for ch in my_api._channels:
             user.join(ch)
-            #print(ch)
-    
 # Create a while loop that always checks for updates.
 client.loop.create_task(my_background_task())
 
