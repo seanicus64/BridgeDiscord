@@ -33,14 +33,15 @@ async def my_background_task():
                     _message = _message.strip("ACTION")
                     to_be_sent = "*{} {}*".format(m.user, _message)
 
-                await client.send_message(discord_channel, to_be_sent)
+                await discord_channel.send(to_be_sent)
+#                await client.send_message(discord_channel, to_be_sent)
             ch.messages = []
         await asyncio.sleep(.01)
 
 @client.event
 async def on_member_join(member):
     nick = member.nick if member.nick else member.display_name
-    my_api.register_user(nick, str(member).replace("#", "_"), "discord", member.display_name, "{}_{}".format(member.server.id, member.id), member)
+    my_api.register_user(nick, str(member).replace("#", "_"), "discord", member.display_name, "{}_{}".format(member.guild.id, member.id), member)
     wait_until_registered()
     IRC_users = my_api.get_user(member)
     for u in IRC_users:
@@ -90,7 +91,7 @@ async def on_ready():
     for m in members:
         # Not all discord users have a nick set.
         nick = m.nick if m.nick else m.display_name
-        my_api.register_user(nick, str(m).replace("#", "_"), "discord", m.display_name, str(m.server.id) + "_" + str(m.id), m)
+        my_api.register_user(nick, str(m).replace("#", "_"), "discord", m.display_name, str(m.guild.id) + "_" + str(m.id), m)
     wait_until_registered()
 
     for user in my_api._users:
